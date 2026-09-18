@@ -117,6 +117,7 @@ def build_appimage(ver: str) -> None:
         ROOT / "assets" / "readme" / "hero.svg",
         icons / "SeeGui.svg",
     )
+    shutil.copy2(icons / "SeeGui.svg", appdir / "SeeGui.svg")
     (apps / "SeeGui.desktop").write_text(
         "\n".join([
             "[Desktop Entry]",
