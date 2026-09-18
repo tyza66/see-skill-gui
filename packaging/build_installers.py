@@ -33,9 +33,9 @@ def version() -> str:
             cwd=ROOT,
             text=True,
         ).strip().lstrip("v")
-        return tagged or "0.1.0"
+        return tagged or "1.0.20260918"
     except Exception:
-        return "0.1.0"
+        return "1.0.20260918"
 
 
 def build_pyinstaller() -> None:

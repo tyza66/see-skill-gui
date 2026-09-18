@@ -3,7 +3,7 @@ Unicode True
 !include "MUI2.nsh"
 
 !ifndef VERSION
-  !define VERSION "0.1.0"
+  !define VERSION "1.0.20260918"
 !endif
 !ifndef OUTPUT
   !define OUTPUT "..\dist\SeeGui-${VERSION}-windows-x64-setup.exe"
