@@ -1,13 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import sys
+import os
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 
-SPEC_DIR = Path(__file__).resolve().parent
-ROOT = SPEC_DIR.parent
+ROOT = Path(os.environ.get("SEE_GUI_ROOT", "")).resolve() or Path(SPECPATH).resolve().parent.parent
 SCRIPT_DIR = ROOT / "see" / "scripts"
 
 datas = [

@@ -39,6 +39,8 @@ def version() -> str:
 
 
 def build_pyinstaller() -> None:
+    env = dict(os.environ)
+    env["SEE_GUI_ROOT"] = str(ROOT)
     run([
         sys.executable,
         "-m",
@@ -46,7 +48,7 @@ def build_pyinstaller() -> None:
         "--noconfirm",
         "--clean",
         str(ROOT / "packaging" / "see-gui.spec"),
-    ])
+    ], env=env)
 
 
 def build_nsis(ver: str) -> None:
