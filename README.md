@@ -113,9 +113,26 @@ see/scripts/see.sh demo.mp4
 | 百炼 | `qwen3.7-plus` | `DASHSCOPE_API_KEY` |
 | OpenRouter | `qwen/qwen3.7-plus` | `OPENROUTER_API_KEY` |
 | TokenDance | `qwen3.7-plus` | `TOKENDANCE_API_KEY` |
+| LongCat / CC Switch | `deepseek-v4-flash-vision-exp` | 本机 CC Switch，无需 Key |
+| 自定义（OpenAI 兼容） | 用户填写 | `CUSTOM_BASE_URL` / `CUSTOM_MODEL` / `CUSTOM_API_KEY` |
 | 本地 | 系统视觉 / OCR | 不需要 |
 
 图片会按配置顺序尝试供应商，全部失败才进入本地视觉分析；视频使用下方的独立路由。
+
+`longcat` 不是让 LongCat 2.0 主模型直接收图，而是复用 CC Switch 本地代理调用可收图的视觉模型。默认地址是 `http://127.0.0.1:15721/v1`，端口不同时用 `LONGCAT_BASE_URL` 覆盖；模型用 `LONGCAT_MODEL` 覆盖。该适配不在默认自动路由里，使用 `--provider longcat` 或 `SEE_PROVIDER=longcat` 启用。
+
+`custom` 适配任意 OpenAI 兼容的视觉接口。地址、Key 和模型都由用户决定：API 地址用 `CUSTOM_BASE_URL`，图片模型用 `CUSTOM_MODEL`，Key 用 `CUSTOM_API_KEY`；视频模型用 `CUSTOM_VIDEO_MODEL`，缺省复用 `CUSTOM_MODEL`。
+
+```bash
+# 方式 A：终端引导，Key 存入系统凭据库
+python3 see/scripts/onboard.py --provider custom
+
+# 方式 B：环境变量或项目 .env.local
+export CUSTOM_BASE_URL=https://api.example.com/v1
+export CUSTOM_MODEL=vision-model
+export CUSTOM_API_KEY=sk-...
+see/scripts/see.sh image.png --provider custom
+```
 
 视频模型自动选择：
 
@@ -125,6 +142,7 @@ see/scripts/see.sh demo.mp4
 | OpenRouter | `google/gemini-3.1-flash-lite` | 完整视频 + 音频 |
 | 百炼 | `qwen3.7-plus` | 完整视频 |
 | TokenDance | `qwen3.7-plus` | 完整视频 |
+| 自定义 | 用户填写，缺省复用 `CUSTOM_MODEL` | 完整视频（取决于端点） |
 
 视频不会降级为抽帧；没有支持视频的云端 Key 时会直接提示配置。
 
@@ -153,6 +171,26 @@ export SEE_PROVIDER=zenmux
 ```
 
 不要把真实 Key 提交到 Git。
+
+## 桌面配置界面
+
+需要图形界面时可以直接打开 Tkinter 配置与安装面板：
+
+```bash
+python3 see/scripts/gui.py
+```
+
+面板提供“配置”和“安装 / 状态”两个页签：选择供应商、填写自定义 API 地址 / Key / 模型、验证并保存，或安装 `~/.codex/AGENTS.md` 的看图拒绝覆盖规则。API Key 留空时保留系统凭据库中已有的值。
+
+GitHub Actions 会为每个平台构建桌面安装包：
+
+| 平台 | 产物 |
+|---|---|
+| Windows | NSIS 安装包（`SeeGui-<version>-windows-x64-setup.exe`） |
+| macOS | DMG（`SeeGui-<version>-macos-<arch>.dmg`） |
+| Linux | AppImage（`SeeGui-<version>-linux-x86_64.AppImage`） |
+
+本机构建使用 `python3 packaging/build_installers.py --installer nsis|dmg|appimage`，详见 [packaging/README.md](packaging/README.md)。
 
 ## 本地降级
 
@@ -221,6 +259,7 @@ see/
     ├── see.sh
     ├── onboard.py
     ├── parse_media.py
+    ├── gui.py
     ├── ocr_macos.js
     ├── ocr_macos.swift
     └── ocr_windows.ps1

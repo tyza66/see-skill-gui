@@ -2,6 +2,40 @@
 
 已有宿主安全配置或可信运行环境注入时直接复用。首次在桌面填写或更换 Key 时使用随附统一页面，不能用“已支持环境变量”或终端隐藏输入代替页面接入。只为用户选择的外部服务配置；内置能力、离线处理和已有官方登录不要求额外 Key。
 
+## LongCat / CC Switch 免 Key 适配
+
+`longcat` 不需要单独业务 Key：它复用 CC Switch 本机代理（默认 `http://127.0.0.1:15721/v1`），上游 Key 由 CC Switch 保存。LongCat 2.0 主模型本身不收图，此适配默认调用同一个中转上可收图的 `deepseek-v4-flash-vision-exp`。不需要打开凭据页或 run 包装器：
+
+```bash
+scripts/see.sh /path/to/image.png --provider longcat
+# 或设置 SEE_PROVIDER=longcat 后按日常方式使用 see
+```
+
+代理地址不是默认端口时用 `LONGCAT_BASE_URL` 覆盖，模型用 `LONGCAT_MODEL` 覆盖。
+
+## 自定义 OpenAI 兼容接口
+
+`custom` 适配任意 OpenAI 兼容的视觉接口。API 地址、Key 和模型全部由用户指定：`CUSTOM_BASE_URL`、`CUSTOM_API_KEY`、`CUSTOM_MODEL`；视频模型用 `CUSTOM_VIDEO_MODEL`，缺省复用 `CUSTOM_MODEL`。
+
+方式一：终端引导，Key 写入系统凭据库，普通配置只保存引用：
+
+```bash
+python3 see/scripts/onboard.py --provider custom
+```
+
+`custom` 的地址与模型由用户自定义，未提供固定配置页声明；选择终端方式时，Key 仍只进入系统凭据库，不写入 Skill 配置。
+
+方式二：环境变量或项目 `.env.local`（不写入用户私有配置，`CUSTOM_API_KEY` 不应提交 Git）：
+
+```bash
+export CUSTOM_BASE_URL=https://api.example.com/v1
+export CUSTOM_MODEL=vision-model
+export CUSTOM_API_KEY=sk-...
+scripts/see.sh image.png --provider custom
+```
+
+运行兜底判断与厂商一致：带 Key 时发送 `Authorization: Bearer`，否则不发认证头。视频能力取决于所选端点是否支持原生长视频输入；不支持时脚本不会把它伪造成图片抽帧。
+
 ## 首次配置
 
 将当前 SKILL.md 所在绝对目录记为 `SKILL_DIR`。页面需要 Node.js 22.18+，首次在组件目录安装锁定依赖：

@@ -85,6 +85,32 @@ PROVIDER_SPECS = {
         "video_audio": False,
         "video_max_bytes": MAX_STRICT_VIDEO_BYTES,
     },
+    "longcat": {
+        "key_names": (),
+        "base_url": "http://127.0.0.1:15721/v1",
+        "base_env": "LONGCAT_BASE_URL",
+        "model": "deepseek-v4-flash-vision-exp",
+        "model_env": "LONGCAT_MODEL",
+        "video_model": "deepseek-v4-flash-vision-exp",
+        "video_model_env": "LONGCAT_VIDEO_MODEL",
+        "video_input": "file",
+        "video_audio": False,
+        "video_max_bytes": MAX_STRICT_VIDEO_BYTES,
+        "requires_key": False,
+    },
+    "custom": {
+        "key_names": ("CUSTOM_API_KEY",),
+        "base_url": "",
+        "base_env": "CUSTOM_BASE_URL",
+        "model": "",
+        "model_env": "CUSTOM_MODEL",
+        "video_model": "",
+        "video_model_env": "CUSTOM_VIDEO_MODEL",
+        "video_input": "video_url",
+        "video_audio": False,
+        "video_max_bytes": MAX_STRICT_VIDEO_BYTES,
+        "requires_config": True,
+    },
 }
 DEFAULT_PROVIDER_ORDER = ("zenmux", "bailian", "tokendance", "openrouter")
 DEFAULT_VIDEO_PROVIDER_ORDER = ("zenmux", "openrouter", "bailian", "tokendance")
@@ -102,6 +128,7 @@ class Provider:
     video_input: str = ""
     video_audio: bool = False
     video_max_bytes: int = MAX_INLINE_VIDEO_BYTES
+    requires_key: bool = True
 
 
 @dataclass
@@ -236,6 +263,8 @@ def resolve_provider(
     base_url = setting(spec["base_env"], values, spec["base_url"])
     if video:
         model = setting(spec["video_model_env"], values, spec["video_model"])
+        if not model and not spec["video_model"]:
+            model = setting(spec["model_env"], values, spec["model"])
     else:
         model = setting(spec["model_env"], values, spec["model"])
     if use_common:
@@ -249,7 +278,62 @@ def resolve_provider(
         video_input=spec["video_input"] if video else "",
         video_audio=bool(spec["video_audio"]) if video else False,
         video_max_bytes=int(spec["video_max_bytes"]) if video else MAX_INLINE_VIDEO_BYTES,
+        requires_key=bool(spec.get("requires_key", True)),
     )
+
+
+def provider_ready(provider: Provider) -> bool:
+    return not provider.requires_key or bool(provider.api_key)
+
+
+def ensure_custom_configured(
+    image_order: list[str],
+    video_order: list[str],
+    values: dict[str, str],
+    base_url_override: str = "",
+    model_override: str = "",
+) -> None:
+    image = "custom" in image_order
+    video = "custom" in video_order
+    if not image and not video:
+        return
+    single_image = image and len(image_order) == 1
+    single_video = video and len(video_order) == 1
+
+    base_url = setting("CUSTOM_BASE_URL", values)
+    if not base_url and (single_image or single_video):
+        base_url = setting("SEE_BASE_URL", values)
+    if not base_url:
+        base_url = base_url_override.strip()
+    if not base_url:
+        raise RuntimeError(
+            "custom provider needs CUSTOM_BASE_URL. "
+            "Run: python3 see/scripts/onboard.py --provider custom"
+        )
+
+    image_model = setting("CUSTOM_MODEL", values)
+    if not image_model and single_image:
+        image_model = setting("SEE_MODEL", values)
+    if not image_model:
+        image_model = model_override.strip()
+    if image and not image_model:
+        raise RuntimeError(
+            "custom provider needs CUSTOM_MODEL. "
+            "Run: python3 see/scripts/onboard.py --provider custom"
+        )
+
+    video_model = setting("CUSTOM_VIDEO_MODEL", values) or image_model
+    if not video_model and single_video:
+        video_model = (
+            setting("SEE_VIDEO_MODEL", values)
+            or setting("SEE_MODEL", values)
+            or model_override.strip()
+        )
+    if video and not video_model:
+        raise RuntimeError(
+            "custom provider needs CUSTOM_VIDEO_MODEL. "
+            "Run: python3 see/scripts/onboard.py --provider custom"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +469,9 @@ def call_provider(provider: Provider, media: list[Path], task: str, retries: int
     last_error: Exception | None = None
 
     for attempt in range(1, retries + 1):
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {provider.api_key}"}
+        headers = {"Content-Type": "application/json"}
+        if provider.api_key:
+            headers["Authorization"] = f"Bearer {provider.api_key}"
         if provider.name == "openrouter":
             headers["HTTP-Referer"] = "https://github.com/oil-oil/see-skill"
             headers["X-Title"] = "see-skill"
@@ -849,7 +935,7 @@ def route_image(
 
     for name in order:
         provider = resolve_provider(name, values, allow_common=len(order) == 1)
-        if not provider.api_key:
+        if not provider_ready(provider):
             attempts.append({"provider": name, "status": "skipped", "detail": "API key not configured"})
             continue
         configured += 1
@@ -893,7 +979,7 @@ def route_video(
 
     for name in order:
         provider = resolve_provider(name, values, allow_common=len(order) == 1, video=True)
-        if not provider.api_key:
+        if not provider_ready(provider):
             attempts.append({"provider": name, "status": "skipped", "detail": "API key not configured"})
             continue
         configured += 1
@@ -977,7 +1063,7 @@ def route_together(
 
     for name in order:
         provider = resolve_provider(name, values, allow_common=len(order) == 1)
-        if not provider.api_key:
+        if not provider_ready(provider):
             attempts.append({"provider": name, "status": "skipped", "detail": "API key not configured"})
             continue
         configured += 1
@@ -1121,6 +1207,13 @@ def main() -> int:
         values = config_values()
         image_order = provider_order(args.provider, values)
         video_order = video_provider_order(args.provider, values)
+        ensure_custom_configured(
+            image_order,
+            video_order,
+            values,
+            args.base_url,
+            args.model,
+        )
         jobs = min(args.jobs, len(raw_inputs))
 
         with tempfile.TemporaryDirectory(prefix="see-") as tmp:
@@ -1131,12 +1224,12 @@ def main() -> int:
             ]
             kinds = [media_kind(path) for path in paths]
             if "video" in kinds and not any(
-                resolve_provider(
+                provider_ready(resolve_provider(
                     name,
                     values,
                     allow_common=len(video_order) == 1,
                     video=True,
-                ).api_key
+                ))
                 for name in video_order
             ):
                 raise RuntimeError(

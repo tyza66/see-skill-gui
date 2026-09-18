@@ -1,0 +1,2 @@
+# Desktop GUI packaging (Python 3.12).
+pyinstaller>=6.11,<7

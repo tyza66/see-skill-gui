@@ -33,6 +33,7 @@ from parse_media import (
     local_setup_hint,
     read_env_file,
     safe_error,
+    setting,
 )
 
 
@@ -88,7 +89,14 @@ def choose_provider() -> str:
     choices = [*PROVIDER_SPECS, "local"]
     print("选择图片 / 视频方案：")
     for index, provider in enumerate(choices, start=1):
-        suffix = "（不需要 Key，仅支持图片本地分析）" if provider == "local" else ""
+        if provider == "local":
+            suffix = "（不需要 Key，仅支持图片本地分析）"
+        elif not PROVIDER_SPECS[provider].get("requires_key", True):
+            suffix = "（不需要 Key，复用本机 CC Switch 代理）"
+        elif provider == "custom":
+            suffix = "（需要自填 API 地址、Key 和模型）"
+        else:
+            suffix = ""
         print(f"  {index}. {provider}{suffix}")
     while True:
         answer = input("请输入序号：").strip()
@@ -111,10 +119,20 @@ def config_status() -> int:
     print(f"配置文件：{path}")
     print(f"默认方案：{values.get('SEE_PROVIDER', '未设置')}")
     configured = []
+    no_key = []
     for provider, spec in PROVIDER_SPECS.items():
         if values.get(f'SEE_CREDENTIAL_REF_{provider.upper()}') or any(os.environ.get(name, '').strip() or values.get(name, '').strip() for name in spec['key_names']):
             configured.append(provider)
+        if not spec.get("requires_key", True):
+            no_key.append(provider)
     print(f"已配置凭据来源（未验证后端或 API）：{', '.join(configured) if configured else '无'}")
+    if no_key:
+        print(f"免 Key 适配：{', '.join(no_key)}（复用本机 CC Switch 代理）")
+    if setting("CUSTOM_BASE_URL", values):
+        print(
+            f"自定义模型：{setting('CUSTOM_BASE_URL', values)} / "
+            f"{setting('CUSTOM_MODEL', values) or '未设置模型'}"
+        )
     print("视频默认：Gemini 3.1 Flash-Lite；平台不可用时 Qwen3.7 Plus")
     agents_path = user_agents_path()
     agents_text = agents_path.read_text(encoding="utf-8") if agents_path.exists() else ""
@@ -207,6 +225,79 @@ def update_order(values: dict[str, str], preferred: str) -> None:
     values["SEE_PROVIDER_ORDER"] = ",".join([preferred, *[item for item in order if item != preferred]])
 
 
+def configure_custom(args: argparse.Namespace, values: dict[str, str]) -> int:
+    interactive = args.provider is None
+
+    if args.base_url:
+        base_url = clean_value(args.base_url, "供应商地址")
+    elif values.get("CUSTOM_BASE_URL"):
+        base_url = values["CUSTOM_BASE_URL"]
+    else:
+        base_url = clean_value(
+            input("请输入自定义 API 地址（OpenAI 兼容，例如 https://api.example.com/v1）："),
+            "供应商地址",
+        )
+    if not base_url:
+        fail("自定义模型需要 API 地址：使用 --base-url 或 CUSTOM_BASE_URL")
+
+    if args.model:
+        image_model = clean_value(args.model, "模型")
+    elif values.get("CUSTOM_MODEL"):
+        image_model = values["CUSTOM_MODEL"]
+    else:
+        image_model = clean_value(input("请输入图片模型名："), "模型")
+    if not image_model:
+        fail("自定义模型需要图片模型名：使用 --model 或 CUSTOM_MODEL")
+
+    video_model = clean_value(values.get("CUSTOM_VIDEO_MODEL", "") or image_model, "视频模型")
+
+    if args.key_stdin:
+        api_key = clean_value(sys.stdin.readline(), "API Key")
+    else:
+        api_key = clean_value(getpass.getpass("请输入自定义 API Key："), "API Key")
+    if not api_key:
+        fail("API Key 不能为空")
+
+    if not args.skip_check:
+        print(f"正在验证 custom / {image_model} ...")
+        try:
+            verify_provider(Provider("custom", api_key, base_url, image_model))
+            print("验证成功。")
+        except Exception as exc:
+            if not interactive or not confirm(
+                f"验证失败：{safe_error(exc)}\n仍然保存配置吗？",
+                default=False,
+            ):
+                fail("配置未保存")
+
+    reference = "see/custom/default"
+    secure_credentials.save(reference, api_key)
+    for alias in PROVIDER_SPECS["custom"]["key_names"]:
+        values.pop(alias, None)
+    values["SEE_CREDENTIAL_REF_CUSTOM"] = reference
+    values["CUSTOM_BASE_URL"] = base_url
+    values["CUSTOM_MODEL"] = image_model
+    values["CUSTOM_VIDEO_MODEL"] = video_model
+
+    make_default = not args.no_default
+    if interactive:
+        make_default = confirm("将 custom 设为默认供应商吗？")
+    if make_default:
+        values["SEE_PROVIDER"] = "custom"
+        update_order(values, "custom")
+
+    path = write_config(values)
+    print(f"配置完成：{path}")
+    print(
+        f"已保存：custom / {image_model}（视频 {video_model}）。"
+        "Key 存入系统凭据库，不会写入 Skill。"
+    )
+    print("右下角仍显示当前主模型是正常的；see 只在需要时调用视觉模型。")
+    maybe_install_agents(args, interactive)
+    print_trigger_hint()
+    return 0
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="安全配置 see 的图片与视频供应商。")
     parser.add_argument("--provider", choices=[*PROVIDER_SPECS, "local"])
@@ -261,14 +352,20 @@ def main() -> int:
         print_trigger_hint()
         return 0
 
+    if provider_name == "custom":
+        return configure_custom(args, values)
+
     spec = PROVIDER_SPECS[provider_name]
-    key_name = spec["key_names"][0]
-    if args.key_stdin:
-        api_key = clean_value(sys.stdin.readline(), "API Key")
+    key_name = spec["key_names"][0] if spec["key_names"] else ""
+    if key_name:
+        if args.key_stdin:
+            api_key = clean_value(sys.stdin.readline(), "API Key")
+        else:
+            api_key = clean_value(getpass.getpass(f"请输入 {provider_name} API Key："), "API Key")
+        if not api_key:
+            fail("API Key 不能为空")
     else:
-        api_key = clean_value(getpass.getpass(f"请输入 {provider_name} API Key："), "API Key")
-    if not api_key:
-        fail("API Key 不能为空")
+        api_key = ""
 
     model = clean_value(args.model or values.get(spec["model_env"], "") or spec["model"], "模型")
     base_url = clean_value(args.base_url or values.get(spec["base_env"], "") or spec["base_url"], "供应商地址")
@@ -282,11 +379,14 @@ def main() -> int:
             if not interactive or not confirm(f"验证失败：{safe_error(exc)}\n仍然保存配置吗？", default=False):
                 fail("配置未保存")
 
-    reference = f'see/{provider_name}/default'
-    secure_credentials.save(reference, api_key)
-    for alias in spec['key_names']:
-        values.pop(alias, None)
-    values[f'SEE_CREDENTIAL_REF_{provider_name.upper()}'] = reference
+    if key_name:
+        reference = f'see/{provider_name}/default'
+        secure_credentials.save(reference, api_key)
+        for alias in spec['key_names']:
+            values.pop(alias, None)
+        values[f'SEE_CREDENTIAL_REF_{provider_name.upper()}'] = reference
+    else:
+        print("此适配不需要单独 API Key；模型走本机 CC Switch 代理。")
     if args.model:
         values[spec["model_env"]] = model
     if args.base_url:
@@ -301,7 +401,10 @@ def main() -> int:
 
     path = write_config(values)
     print(f"配置完成：{path}")
-    print(f"已保存：{provider_name} / {model}。图片和视频可共用此 Key，Key 不会写入 Skill。")
+    if key_name:
+        print(f"已保存：{provider_name} / {model}。图片和视频可共用此 Key，Key 不会写入 Skill。")
+    else:
+        print(f"已保存：{provider_name} / {model}。")
     print("右下角仍显示当前主模型是正常的；see 只在需要时调用视觉模型。")
     maybe_install_agents(args, interactive)
     print_trigger_hint()
