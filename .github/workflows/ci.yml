@@ -63,13 +63,16 @@ jobs:
         run: choco install nsis -y --no-progress
 
       - name: Install Python build dependencies
-        run: "$PYTHON" -m pip install -r see/scripts/requirements-credentials.txt -r packaging/requirements-build.txt
+        run: |
+          "$PYTHON" -m pip install -r see/scripts/requirements-credentials.txt -r packaging/requirements-build.txt
 
       - name: Compile source
-        run: "$PYTHON" -m py_compile see/scripts/gui.py packaging/gui_entry.py packaging/build_installers.py
+        run: |
+          "$PYTHON" -m py_compile see/scripts/gui.py packaging/gui_entry.py packaging/build_installers.py
 
       - name: Build installer
-        run: "$PYTHON" packaging/build_installers.py --installer ${{ matrix.installer }}
+        run: |
+          "$PYTHON" packaging/build_installers.py --installer ${{ matrix.installer }}
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
