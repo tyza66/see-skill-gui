@@ -98,5 +98,4 @@ jobs:
             release-artifacts/* \
             --repo "${{ github.repository }}" \
             --title "SeeGui ${DISPLAY_NAME}" \
-            --generate-notes \
-            --clobber
+            --generate-notes
