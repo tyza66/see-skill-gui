@@ -3,7 +3,7 @@ on:
   push:
   pull_request:
 permissions:
-  contents: read
+  contents: write
 jobs:
   python-tests:
     runs-on: ubuntu-latest
@@ -29,7 +29,7 @@ jobs:
             installer: appimage
           - os: windows-latest
             installer: nsis
-          - os: macos-13
+          - os: macos-14
             installer: dmg
     steps:
       - uses: actions/checkout@v4
@@ -56,23 +56,48 @@ jobs:
       - name: Set Windows Python command
         if: runner.os == 'Windows'
         run: echo "PYTHON=python" >> "$GITHUB_ENV"
+        shell: pwsh
 
       - name: Install NSIS (Windows)
         if: runner.os == 'Windows'
         run: choco install nsis -y --no-progress
 
       - name: Install Python build dependencies
-        run: $PYTHON -m pip install -r see/scripts/requirements-credentials.txt -r packaging/requirements-build.txt
+        run: "$PYTHON" -m pip install -r see/scripts/requirements-credentials.txt -r packaging/requirements-build.txt
 
       - name: Compile source
-        run: $PYTHON -m py_compile see/scripts/gui.py packaging/gui_entry.py packaging/build_installers.py
+        run: "$PYTHON" -m py_compile see/scripts/gui.py packaging/gui_entry.py packaging/build_installers.py
 
       - name: Build installer
-        run: $PYTHON packaging/build_installers.py --installer ${{ matrix.installer }}
+        run: "$PYTHON" packaging/build_installers.py --installer ${{ matrix.installer }}
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: SeeGui-${{ matrix.installer }}
-          path: dist/*
+          path: dist/installers/SeeGui.*
           if-no-files-found: error
+
+  release:
+    needs: package
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          DISPLAY_NAME="${VERSION#v}"
+          gh release create "$VERSION" \
+            release-artifacts/* \
+            --repo "${{ github.repository }}" \
+            --title "SeeGui ${DISPLAY_NAME}" \
+            --generate-notes \
+            --clobber

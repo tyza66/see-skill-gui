@@ -6,7 +6,8 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 
-ROOT = Path(SPECPATH).resolve().parent.parent
+SPEC_DIR = Path(__file__).resolve().parent
+ROOT = SPEC_DIR.parent
 SCRIPT_DIR = ROOT / "see" / "scripts"
 
 datas = [

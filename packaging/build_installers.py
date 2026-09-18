@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
+INSTALLERS = DIST / "installers"
 BUILD = ROOT / "build"
 
 
@@ -66,6 +67,9 @@ def build_nsis(ver: str) -> None:
         f"/DVERSION={ver}",
         str(ROOT / "packaging" / "see-gui.nsi"),
     ], cwd=ROOT / "packaging")
+    installer = DIST / f"SeeGui-{ver}-windows-x64-setup.exe"
+    INSTALLERS.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(installer, INSTALLERS / "SeeGui.exe")
 
 
 def build_dmg(ver: str) -> None:
@@ -88,6 +92,8 @@ def build_dmg(ver: str) -> None:
         "UDZO",
         str(dmg),
     ])
+    INSTALLERS.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(dmg, INSTALLERS / "SeeGui.dmg")
 
 
 def build_appimage(ver: str) -> None:
@@ -148,6 +154,8 @@ def build_appimage(ver: str) -> None:
         str(appdir),
         str(output),
     ])
+    INSTALLERS.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(output, INSTALLERS / "SeeGui.AppImage")
 
 
 def main() -> int:

@@ -6,6 +6,13 @@
 - macOS：`SeeGui-<version>-macos-<arch>.dmg`
 - Linux：`SeeGui-<version>-linux-x86_64.AppImage`
 
+推送 `v*` 版本 tag（例如 `v1.0.0`）时，CI 会复用同一套三平台构建并自动创建 GitHub Release，附上三个安装包：
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 本机构建：
 
 ```bash
