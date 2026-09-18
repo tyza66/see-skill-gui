@@ -131,6 +131,7 @@ def build_appimage(ver: str) -> None:
         ]),
         encoding="utf-8",
     )
+    shutil.copy2(apps / "SeeGui.desktop", appdir / "SeeGui.desktop")
     (appdir / "AppRun").write_text(
         "#!/bin/sh\n"
         'exec "$(dirname "$0")/usr/bin/SeeGui" "$@"\n',
@@ -149,6 +150,8 @@ def build_appimage(ver: str) -> None:
             "appimagetool-x86_64.AppImage",
         ])
         tool.chmod(0o755)
+    for entry in sorted(appdir.rglob("*.desktop")):
+        print(f"AppDir desktop file: {entry}", flush=True)
     output = DIST / f"SeeGui-{ver}-linux-x86_64.AppImage"
     run([
         str(tool),
