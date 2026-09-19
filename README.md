@@ -112,6 +112,7 @@ see demo.mp4
 | OpenRouter | `qwen/qwen3.7-plus` | `OPENROUTER_API_KEY` |
 | TokenDance | `qwen3.7-plus` | `TOKENDANCE_API_KEY` |
 | LongCat / CC Switch | `deepseek-v4-flash-vision-exp` | 本机 CC Switch，无需 Key |
+| DeepSeek | `deepseek-vl2-base` | `DEEPSEEK_API_KEY` |
 | 自定义（OpenAI 兼容） | 用户填写 | `CUSTOM_BASE_URL` / `CUSTOM_MODEL` / `CUSTOM_API_KEY` |
 | 本地 | 系统视觉 / OCR | 不需要 |
 

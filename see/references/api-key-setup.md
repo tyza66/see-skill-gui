@@ -58,6 +58,7 @@ node "$SKILL_DIR/scripts/credential-ui/src/profile.ts" setup default
 | bailian | `DASHSCOPE_API_KEY` | `see/bailian/default` |
 | openrouter | `OPENROUTER_API_KEY` | `see/openrouter/default` |
 | tokendance | `TOKENDANCE_API_KEY` | `see/tokendance/default` |
+| deepseek | `DEEPSEEK_API_KEY` | `see/deepseek/default` |
 
 `default` 是脚本已有默认适配器，并不授权调用收费服务。用户选另一适配器时，同时选择对应配置名与业务参数，不能只换 Key。服务真实名称、接口和数据范围见原有依赖说明；以上变量名保留程序兼容。
 

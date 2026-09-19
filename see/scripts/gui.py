@@ -33,6 +33,7 @@ APP_TITLE = "See 配置与安装"
 PROVIDER_ORDER = [
     "local",
     "longcat",
+    "deepseek",
     "zenmux",
     "bailian",
     "openrouter",
@@ -42,6 +43,7 @@ PROVIDER_ORDER = [
 PROVIDER_LABELS = {
     "local": "本地视觉 / OCR",
     "longcat": "LongCat / CC Switch（免 Key）",
+    "deepseek": "DeepSeek",
     "zenmux": "ZenMux",
     "bailian": "百炼",
     "openrouter": "OpenRouter",

@@ -98,9 +98,21 @@ PROVIDER_SPECS = {
         "video_input": "file",
         "video_audio": False,
         "video_max_bytes": MAX_STRICT_VIDEO_BYTES,
-        "requires_key": False,
+       "requires_key": False,
+   },
+    "deepseek": {
+        "key_names": ("DEEPSEEK_API_KEY",),
+        "base_url": "https://api.deepseek.com/v1",
+        "base_env": "DEEPSEEK_BASE_URL",
+        "model": "deepseek-vl2-base",
+        "model_env": "DEEPSEEK_MODEL",
+        "video_model": "deepseek-vl2-large",
+        "video_model_env": "DEEPSEEK_VIDEO_MODEL",
+        "video_input": "video_url",
+        "video_audio": False,
+        "video_max_bytes": MAX_STRICT_VIDEO_BYTES,
     },
-    "custom": {
+   "custom": {
         "key_names": ("CUSTOM_API_KEY",),
         "base_url": "",
         "base_env": "CUSTOM_BASE_URL",
@@ -114,8 +126,8 @@ PROVIDER_SPECS = {
         "requires_config": True,
     },
 }
-DEFAULT_PROVIDER_ORDER = ("zenmux", "bailian", "tokendance", "openrouter")
-DEFAULT_VIDEO_PROVIDER_ORDER = ("zenmux", "openrouter", "bailian", "tokendance")
+DEFAULT_PROVIDER_ORDER = ("zenmux", "bailian", "tokendance", "openrouter", "deepseek")
+DEFAULT_VIDEO_PROVIDER_ORDER = ("zenmux", "openrouter", "bailian", "tokendance", "deepseek")
 MACOS_OCR_BUILD_LOCK = threading.Lock()
 TESSERACT_LANGUAGE_LOCK = threading.Lock()
 TESSERACT_LANGUAGE_CACHE: str | None = None

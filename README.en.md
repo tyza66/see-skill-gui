@@ -112,6 +112,7 @@ A text-only host model still receives text output, so this can never be identica
 | OpenRouter | `qwen/qwen3.7-plus` | `OPENROUTER_API_KEY` |
 | TokenDance | `qwen3.7-plus` | `TOKENDANCE_API_KEY` |
 | LongCat / CC Switch | `deepseek-v4-flash-vision-exp` | Local CC Switch, no key needed |
+| DeepSeek | `deepseek-vl2-base` | `DEEPSEEK_API_KEY` |
 | Custom (OpenAI-compatible) | User-defined | `CUSTOM_BASE_URL` / `CUSTOM_MODEL` / `CUSTOM_API_KEY` |
 | Local | System vision / OCR | None |
 
