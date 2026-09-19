@@ -64,14 +64,7 @@ jobs:
 
       - name: Compile source
         run: |
-          python -m py_compile \
-            see/scripts/gui.py \
-            see/scripts/onboard.py \
-            see/scripts/parse_media.py \
-            see/scripts/usage_log.py \
-            see/scripts/secure_credentials.py \
-            packaging/gui_entry.py \
-            packaging/build_installers.py
+          python -m py_compile see/scripts/gui.py see/scripts/onboard.py see/scripts/parse_media.py see/scripts/usage_log.py see/scripts/secure_credentials.py packaging/gui_entry.py packaging/build_installers.py
 
       - name: Build installer
         run: |
