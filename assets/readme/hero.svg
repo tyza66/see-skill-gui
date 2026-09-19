@@ -61,7 +61,6 @@
     <g id="deepseek-output" transform="translate(318 159)">
       <rect width="96" height="50" rx="12" fill="#1A1230" stroke="#7E5BD6" stroke-width="2"/>
       <text x="48" y="22" text-anchor="middle" fill="#C9B3FF" font-size="15" font-weight="700">DEEPSEEK</text>
-      <text x="48" y="41" text-anchor="middle" fill="#F4FBF7" font-size="15" font-weight="750">VL2</text>
     </g>
 
     <text x="20" y="220" fill="#8DA69B" font-size="17">同一个入口，自动选择可用的视觉路径，并兜底到本机 OCR</text>
@@ -71,7 +70,7 @@
      font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
      font-size="17" font-weight="650">
     <text x="0" y="0" fill="#5EE7B1">GEMINI 3.1 FLASH-LITE · QWEN3.7 PLUS</text>
-    <text x="380" y="0" fill="#C9B3FF">DEEPSEEK VL2 · LONGCAT</text>
+    <text x="380" y="0" fill="#C9B3FF">DEEPSEEK · LONGCAT</text>
     <text x="720" y="0" fill="#8DA69B">ZENMUX · 百炼 · OPENROUTER · TOKENDANCE</text>
   </g>
 </svg>
