@@ -26,9 +26,9 @@ Download the installer for your platform from GitHub Releases:
 
 | Platform | Installer |
 |---|---|
-| Windows | `SeeGui-1.0.20260918-windows-x64-setup.exe` |
-| macOS | `SeeGui-1.0.20260918-macos-<arch>.dmg` |
-| Linux | `SeeGui-1.0.20260918-linux-x86_64.AppImage` |
+| Windows | `SeeGui-1.0.20260919-windows-x64-setup.exe` |
+| macOS | `SeeGui-1.0.20260919-macos-<arch>.dmg` |
+| Linux | `SeeGui-1.0.20260919-linux-x86_64.AppImage` |
 
 Pushing a `v*` tag makes GitHub Actions build all three installers and create or update a Release. Re-pushing the same version tag replaces the old artifacts.
 

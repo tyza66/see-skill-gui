@@ -6,11 +6,11 @@
 - macOS：`SeeGui-<version>-macos-<arch>.dmg`
 - Linux：`SeeGui-<version>-linux-x86_64.AppImage`
 
-推送 `v*` 版本 tag（例如 `v1.0.20260918`）时，CI 会复用同一套三平台构建并自动创建/更新 GitHub Release，附上三个安装包。同一版本号重新打 tag 会替换旧 Release 的二进制：
+推送 `v*` 版本 tag（例如 `v1.0.20260919`）时，CI 会复用同一套三平台构建并自动创建/更新 GitHub Release，附上三个安装包。同一版本号重新打 tag 会替换旧 Release 的二进制：
 
 ```bash
-git tag v1.0.20260918
-git push origin v1.0.20260918
+git tag v1.0.20260919
+git push origin v1.0.20260919
 ```
 
 生成的 SeeGui 提供“配置 / 安装 / 日志”三个页签：配置供应商与截图选项，一键安装 See Skill 和全局 `see` CLI，随时卸载选定的全局组件，并监控识图与安装日志。

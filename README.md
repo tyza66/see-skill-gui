@@ -26,9 +26,9 @@ $see
 
 | 平台 | 安装包 |
 |---|---|
-| Windows | `SeeGui-1.0.20260918-windows-x64-setup.exe` |
-| macOS | `SeeGui-1.0.20260918-macos-<arch>.dmg` |
-| Linux | `SeeGui-1.0.20260918-linux-x86_64.AppImage` |
+| Windows | `SeeGui-1.0.20260919-windows-x64-setup.exe` |
+| macOS | `SeeGui-1.0.20260919-macos-<arch>.dmg` |
+| Linux | `SeeGui-1.0.20260919-linux-x86_64.AppImage` |
 
 推送 `v*` tag 时，GitHub Actions 会自动构建三平台安装包并创建/更新 Release；用同一版本号重新打 tag 会覆盖旧包。
 
