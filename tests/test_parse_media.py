@@ -109,6 +109,18 @@ class LongCatAdapterTests(unittest.TestCase):
         self.assertEqual(result.text, "图片内容")
 
 
+class DeepSeekAdapterTests(unittest.TestCase):
+    def test_spec_is_image_only_and_uses_current_flash_model(self) -> None:
+        spec = parse_media.PROVIDER_SPECS["deepseek"]
+        self.assertEqual(spec["model"], "deepseek-flash")
+        self.assertEqual(spec["video_model"], "")
+        self.assertIn("DEEPSEEK_API_KEY", spec["key_names"])
+
+    def test_deepseek_is_not_in_video_route_but_stays_in_image_route(self) -> None:
+        self.assertIn("deepseek", parse_media.DEFAULT_PROVIDER_ORDER)
+        self.assertNotIn("deepseek", parse_media.DEFAULT_VIDEO_PROVIDER_ORDER)
+
+
 class CustomProviderTests(unittest.TestCase):
     def test_spec_requires_user_configuration(self) -> None:
         spec = parse_media.PROVIDER_SPECS["custom"]

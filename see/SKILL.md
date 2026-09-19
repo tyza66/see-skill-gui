@@ -47,9 +47,9 @@ scripts/see.sh screenshot.png --task "重点识别界面文字"
 
 新配置按上述 API Key 配置说明打开本机页面，由用户亲自保存；选择的配置名、业务 `--provider` 必须对应。通过 run 包装云端分析命令，不能绕过包装器读取页面凭据。原 onboard 只用于兼容配置、状态或用户明确选择的终端方式。
 
-供应商：`zenmux`、`bailian`、`openrouter`、`tokendance`、`longcat`、`custom`、`local`。图片默认 Qwen3.7 Plus；`longcat` 默认 `deepseek-v4-flash-vision-exp`。视频在 ZenMux/OpenRouter 默认 Gemini 3.1 Flash-Lite，其余平台默认 Qwen3.7 Plus。覆盖视频模型用 `SEE_VIDEO_MODEL`。
+供应商：`zenmux`、`bailian`、`openrouter`、`tokendance`、`deepseek`、`longcat`、`custom`、`local`。图片默认 Qwen3.7 Plus；`longcat` 默认 `deepseek-v4-flash-vision-exp`；`deepseek` 默认 `deepseek-flash`，仅支持图片、不参与视频路由。视频在 ZenMux/OpenRouter 默认 Gemini 3.1 Flash-Lite，其余平台默认 Qwen3.7 Plus。覆盖视频模型用 `SEE_VIDEO_MODEL`。
 
-`longcat` 复用本机 CC Switch 代理，默认地址 `http://127.0.0.1:15721/v1`，端口不同用 `LONGCAT_BASE_URL` 覆盖；模型用 `LONGCAT_MODEL` 覆盖。LongCat 2.0 主模型本身不收图，此适配调用同一个中转里可收图的视觉模型。也兼容厂商变量：`ZENMUX_API_KEY`、`DASHSCOPE_API_KEY`、`OPENROUTER_API_KEY`、`TOKENDANCE_API_KEY`。配置读取顺序为环境变量 → `.env.local` → 用户私有配置。
+`longcat` 复用本机 CC Switch 代理，默认地址 `http://127.0.0.1:15721/v1`，端口不同用 `LONGCAT_BASE_URL` 覆盖；模型用 `LONGCAT_MODEL` 覆盖。LongCat 2.0 主模型本身不收图，此适配调用同一个中转里可收图的视觉模型。也兼容厂商变量：`ZENMUX_API_KEY`、`DASHSCOPE_API_KEY`、`OPENROUTER_API_KEY`、`TOKENDANCE_API_KEY`、`DEEPSEEK_API_KEY`。配置读取顺序为环境变量 → `.env.local` → 用户私有配置。
 
 `custom` 适配任意 OpenAI 兼容的视觉接口，用户自填 `CUSTOM_BASE_URL`、`CUSTOM_MODEL`、`CUSTOM_API_KEY`；视频模型用 `CUSTOM_VIDEO_MODEL`，缺省复用 `CUSTOM_MODEL`。运行 `python3 scripts/onboard.py --provider custom` 终端引导保存，或把三项放到环境变量 / 项目 `.env.local` 后使用 `scripts/see.sh 图片 --provider custom`。
 

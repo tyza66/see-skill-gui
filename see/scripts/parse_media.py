@@ -104,9 +104,9 @@ PROVIDER_SPECS = {
         "key_names": ("DEEPSEEK_API_KEY",),
         "base_url": "https://api.deepseek.com/v1",
         "base_env": "DEEPSEEK_BASE_URL",
-        "model": "deepseek-v4-flash-vision",
+        "model": "deepseek-flash",
         "model_env": "DEEPSEEK_MODEL",
-        "video_model": "deepseek-v4.1-flash",
+        "video_model": "",
         "video_model_env": "DEEPSEEK_VIDEO_MODEL",
         "video_input": "video_url",
         "video_audio": False,
@@ -127,7 +127,7 @@ PROVIDER_SPECS = {
     },
 }
 DEFAULT_PROVIDER_ORDER = ("zenmux", "bailian", "tokendance", "openrouter", "deepseek")
-DEFAULT_VIDEO_PROVIDER_ORDER = ("zenmux", "openrouter", "bailian", "tokendance", "deepseek")
+DEFAULT_VIDEO_PROVIDER_ORDER = ("zenmux", "openrouter", "bailian", "tokendance")
 MACOS_OCR_BUILD_LOCK = threading.Lock()
 TESSERACT_LANGUAGE_LOCK = threading.Lock()
 TESSERACT_LANGUAGE_CACHE: str | None = None
