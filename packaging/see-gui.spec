@@ -10,10 +10,30 @@ from PyInstaller.utils.hooks import collect_all, collect_submodules
 ROOT = Path(os.environ.get("SEE_GUI_ROOT", "")).resolve() or Path(SPECPATH).resolve().parent.parent
 SCRIPT_DIR = ROOT / "see" / "scripts"
 
+
+def collect_skill_data():
+    """Bundle the whole skill so the GUI can install it globally."""
+    source = ROOT / "see"
+    entries = []
+    for path in sorted(source.rglob("*")):
+        if not path.is_file():
+            continue
+        parts = path.relative_to(source).parts
+        if any(part in {"node_modules", "__pycache__", ".git"} for part in parts):
+            continue
+        destination = Path("see") / Path(*parts[:-1]) if parts[:-1] else Path("see")
+        entries.append((str(path), str(destination)))
+    marker = os.environ.get("SEE_GUI_MARKER", "")
+    if marker and Path(marker).is_file():
+        entries.append((marker, "see"))
+    return entries
+
+
 datas = [
     (str(SCRIPT_DIR / "ocr_macos.js"), "."),
     (str(SCRIPT_DIR / "ocr_macos.swift"), "."),
     (str(SCRIPT_DIR / "ocr_windows.ps1"), "."),
+    *collect_skill_data(),
 ]
 binaries = []
 try:

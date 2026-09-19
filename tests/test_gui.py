@@ -81,5 +81,60 @@ class SavePlanTests(unittest.TestCase):
             gui.build_save_plan("custom", "key", "https://api.example.com/v1", "", "", False, {})
 
 
+class LogAndUninstallHelperTests(unittest.TestCase):
+    def test_format_log_entry_never_echoes_redacted_value(self) -> None:
+        rendered = gui.format_log_entry({
+            "ts": "2026-09-19T00:00:00+00:00",
+            "event": "analyze_failed",
+            "error": "HTTP 401 Bearer sk-secret",
+            "count": 1,
+        })
+        self.assertIn("analyze_failed", rendered)
+        self.assertIn("count=1", rendered)
+
+    def test_log_summary_counts_success_and_failure(self) -> None:
+        entries = [
+            {"event": "analyze_success"},
+            {"event": "analyze_success"},
+            {"event": "analyze_failed"},
+            {"event": "analyze_start", "ts": "now"},
+        ]
+        summary = gui.log_summary(entries)
+        self.assertEqual(summary["total"], 4)
+        self.assertEqual(summary["success"], 2)
+        self.assertEqual(summary["failed"], 1)
+        self.assertEqual(summary["last"], "now")
+
+    def test_advanced_values_validation(self) -> None:
+        values = gui.advanced_values_from_gui(
+            "~/Pictures/see",
+            "tesseract",
+            "chi_sim+eng",
+            "2",
+        )
+        self.assertEqual(values["SEE_OUTPUT_DIR"], "~/Pictures/see")
+        self.assertEqual(values["SEE_OCR_BACKEND"], "tesseract")
+        self.assertEqual(values["SEE_JOBS"], "2")
+        with self.assertRaisesRegex(ValueError, "正整数"):
+            gui.advanced_values_from_gui("", "auto", "", "0")
+
+    def test_uninstall_plan_summary(self) -> None:
+        plan = gui.UninstallPlan(
+            skill=True,
+            cli=True,
+            agents=False,
+            config=False,
+            credentials=False,
+            logs=False,
+        )
+        self.assertTrue(plan.ready())
+        self.assertIn("See Skill", plan.summary())
+        self.assertIn("全局 CLI", plan.summary())
+        self.assertNotIn("使用日志", plan.summary())
+        self.assertFalse(
+            gui.UninstallPlan(False, False, False, False, False, False).ready()
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

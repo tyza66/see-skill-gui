@@ -55,7 +55,16 @@ scripts/see.sh screenshot.png --task "重点识别界面文字"
 
 Windows 私有配置位于 `%APPDATA%\see\config.env`；macOS/Linux 位于 `~/.config/see/config.env`。配置文件权限仅限当前用户，不得复制进 Skill 或项目仓库。
 
-需要桌面配置界面时运行 `python3 scripts/gui.py`；它复用 onboard 的安全保存流程，Key 仍只写入系统凭据库。
+## 桌面安装与使用闭环
+
+推荐通过 SeeGui 桌面端完成闭环。用户从 GitHub Releases 安装 SeeGui 后：
+
+- “配置”页选择供应商并填写 API 地址、Key、模型，也可设置输出目录、OCR 后端、OCR 语言和并行任务数。
+- “安装 / 状态”页一键安装 See Skill（`~/.codex/skills/see`）与全局 `see` CLI，并可选写入 AGENTS 规则；随后可直接使用 `see` 命令替代 `scripts/see.sh`。
+- “日志”页监控识图成功/失败、安装/卸载和配置保存事件；日志位于 `~/.config/see/usage.log`（Windows 为 `%APPDATA%\see\usage.log`），不包含 API Key 或媒体原文。
+- “卸载”按勾选执行，可分别移除 Skill、全局 CLI、AGENTS 规则、配置、系统凭据或日志。
+
+源码方式同样可以运行 `python3 scripts/gui.py`；它复用 onboard 的安全保存流程，Key 仍只写入系统凭据库。
 
 本地降级：
 

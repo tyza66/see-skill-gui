@@ -23,6 +23,8 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import urlparse
 
+import usage_log
+
 
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".tiff", ".svg"}
 VIDEO_EXTS = {".mp4", ".mov", ".mpeg", ".mpg", ".webm", ".avi", ".mkv", ".wmv", ".flv", ".3gp"}
@@ -1223,6 +1225,19 @@ def main() -> int:
                 for index, raw in enumerate(raw_inputs, start=1)
             ]
             kinds = [media_kind(path) for path in paths]
+            usage_log.append(
+                "analyze_start",
+                kind=",".join(sorted(set(kinds))),
+                count=len(raw_inputs),
+                mode=(
+                    "together"
+                    if args.together
+                    else "parallel"
+                    if len(raw_inputs) > 1
+                    else "single"
+                ),
+                provider=args.provider,
+            )
             if "video" in kinds and not any(
                 provider_ready(resolve_provider(
                     name,
@@ -1315,10 +1330,20 @@ def main() -> int:
                 + "\n"
             )
             destination.write_text(content, encoding="utf-8")
+            usage_log.append(
+                "analyze_success",
+                kind=",".join(sorted(set(kinds))),
+                count=len(raw_inputs),
+                mode=mode,
+                backend=unique_join([item.backend for item in results]),
+                model=unique_join([item.model for item in results]),
+            )
             print(f"output_path={destination}")
         return 0
     except Exception as exc:
-        print(f"[ERROR] {safe_error(exc)}", file=sys.stderr)
+        message = safe_error(exc)
+        usage_log.append("analyze_failed", error=message)
+        print(f"[ERROR] {message}", file=sys.stderr)
         return 1
 
 

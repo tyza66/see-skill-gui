@@ -39,8 +39,14 @@ def version() -> str:
 
 
 def build_pyinstaller() -> None:
+    ver = version()
     env = dict(os.environ)
     env["SEE_GUI_ROOT"] = str(ROOT)
+    env["SEE_GUI_VERSION"] = ver
+    marker = BUILD / f"see-skill-{ver}" / ".see-gui-version"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(ver, encoding="utf-8")
+    env["SEE_GUI_MARKER"] = str(marker)
     run([
         sys.executable,
         "-m",

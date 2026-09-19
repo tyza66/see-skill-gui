@@ -2,7 +2,7 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="see 为任何不支持多模态的模型补充原生图片与视频理解">
 </p>
 
-分析图片、截图和视频，输出可阅读的媒体报告，并在适用时使用本地文字识别。
+分析图片、截图和视频，输出可阅读的媒体报告，并在适用时使用本地文字识别。SeeGui 桌面端负责完整闭环：全局安装 See Skill 与 `see` CLI、随时卸载、配置供应商和截图选项、查看识图与安装日志。
 
 ## 不要拖图
 
@@ -18,33 +18,29 @@
 $see
 ```
 
-配置凭据不会修改全局规则。只有用户明确要求全局接入时才运行 `onboard.py --install-agents`；它是可选适配，不是图片分析的前置步骤。
+配置凭据不会修改全局规则。Skill 安装后只在本机生效；只有用户明确要求时才会写入 `~/.codex/AGENTS.md` 的看图拒绝覆盖规则，它是可选宿主适配，不是图片分析的前置步骤。
 
-## 安装
+## 安装 SeeGui（推荐）
 
-把下面这句话发给 Agent：
+从 GitHub Releases 下载当前平台的安装包：
 
-```text
-安装 https://github.com/oil-oil/see-skill skill
-```
+| 平台 | 安装包 |
+|---|---|
+| Windows | `SeeGui-1.0.20260918-windows-x64-setup.exe` |
+| macOS | `SeeGui-1.0.20260918-macos-<arch>.dmg` |
+| Linux | `SeeGui-1.0.20260918-linux-x86_64.AppImage` |
 
-安装完成后说：
+推送 `v*` tag 时，GitHub Actions 会自动构建三平台安装包并创建/更新 Release；用同一版本号重新打 tag 会覆盖旧包。
 
-```text
-帮我配置 see
-```
+启动 SeeGui 后按三个页签完成闭环：
 
-Agent 会按[配置说明](see/references/api-key-setup.md)展示本机页面。选择实际使用的服务后，由你亲自填写 Key；保存后经对应 run 入口启动分析。
-
-没有多模态 Key 也能使用，onboard 时选择 `local` 即可。
-
-只补 Codex 拒绝覆盖、不改供应商时：
-
-```bash
-# 仅明确要求修改全局规则时：python3 see/scripts/onboard.py --install-agents
-```
+1. **配置**：选择供应商（ZenMux、百炼、OpenRouter、TokenDance、LongCat、自定义、本地），填写 API 地址、Key、模型后“验证并保存”；下方“截图与本地选项”可设置输出目录、OCR 后端、OCR 语言和并行任务数。
+2. **安装 / 状态**：点击“安装 / 更新全局组件”，把 See Skill 安装到 `~/.codex/skills/see`，把全局 CLI 安装到 `~/.local/bin/see`（Windows 为 `%APPDATA%\see\bin\see.cmd`）并加入 PATH。以后可以在任何目录直接使用 `see` 命令。卸载时勾选 Skill、CLI、AGENTS 规则、配置文件、系统凭据或使用日志，点击“执行选定卸载”即可。
+3. **日志**：识图开始、成功、失败以及安装/卸载/配置保存都会记录到 `~/.config/see/usage.log`（Windows 为 `%APPDATA%\see\usage.log`）。日志页显示最近 200 条、成功/失败次数，可刷新或清空；日志不包含 API Key 或媒体原文。
 
 安装 Skill 不会更换右下角的主模型。继续显示原来的文本模型是正常的，`see` 只在查看媒体时调用视觉后端。
+
+没有多模态 Key 也能使用：供应商选择 `local` 即可走系统视觉 / OCR。
 
 ## 直接使用
 
@@ -70,21 +66,23 @@ Agent 会按[配置说明](see/references/api-key-setup.md)展示本机页面。
 总结 /path/to/demo.mp4 的内容
 ```
 
-AI 只需要调用一个脚本：
+AI 只需要调用一个命令。安装过 SeeGui 的全局 CLI 后，直接使用 `see`：
 
 ```bash
 # 单图
-see/scripts/see.sh screenshot.png
+see screenshot.png
 
 # 多图独立分析，默认并行
-see/scripts/see.sh a.png b.png c.png
+see a.png b.png c.png
 
 # 多图联合理解
-see/scripts/see.sh --together before.png after.png --task "比较界面变化"
+see --together before.png after.png --task "比较界面变化"
 
 # 完整视频理解
-see/scripts/see.sh demo.mp4
+see demo.mp4
 ```
+
+未安装全局 CLI 时，仓库内路径也等价：`see/scripts/see.sh <参数>`。
 
 ## 为什么更接近原生视觉
 
@@ -148,7 +146,7 @@ see/scripts/see.sh image.png --provider custom
 
 ## Onboard 与 Key 保存
 
-新 Key 使用固定页面，云端执行通过对应配置的 run 包装器。旧 Onboard 保留给用户主动选择的终端配置、路由调整和本地模式：
+推荐用 SeeGui 配置供应商并全局安装；新 Key 使用固定页面，云端执行通过对应配置的 run 包装器。旧 Onboard 保留给用户主动选择的终端配置、路由调整和本地模式：
 
 ```bash
 python3 see/scripts/onboard.py
@@ -172,17 +170,24 @@ export SEE_PROVIDER=zenmux
 
 不要把真实 Key 提交到 Git。
 
-## 桌面配置界面
+## SeeGui 生命周期
 
-需要图形界面时可以直接打开 Tkinter 配置与安装面板：
+SeeGui 由 Tkinter 编写，打包为三平台桌面应用。安装包内的 SeeGui 同时携带完整 See Skill 资源，因此可以离线完成全局安装与卸载：
+
+- **安装**：`安装 / 更新全局组件` 会先安装 See Skill 到 `~/.codex/skills/see`，再创建全局 `see` 命令并加入 PATH，可选写入 `~/.codex/AGENTS.md` 的看图拒绝覆盖规则。
+- **状态**：页面实时显示 Skill 版本与安装路径、CLI 路径与 PATH 状态、AGENTS 规则是否写入。
+- **卸载**：按勾选执行，可分别卸载 Skill、全局 CLI、AGENTS 规则、配置文件、系统凭据和使用日志，无需手动清理。
+- **日志**：识图开始 / 成功 / 失败、安装 / 卸载、配置保存都写入 JSONL 日志；页面显示最近 200 条、成功失败统计，可刷新和清空。
+
+直接运行源码版本：
 
 ```bash
 python3 see/scripts/gui.py
 ```
 
-面板提供“配置”和“安装 / 状态”两个页签：选择供应商、填写自定义 API 地址 / Key / 模型、验证并保存，或安装 `~/.codex/AGENTS.md` 的看图拒绝覆盖规则。API Key 留空时保留系统凭据库中已有的值。
+API Key 留空时保留系统凭据库中已有的值；Key 始终不写入配置文件和日志。
 
-GitHub Actions 会为每个平台构建桌面安装包：
+GitHub Actions 会为每个平台构建桌面安装包，并支持本地手动构建：
 
 | 平台 | 产物 |
 |---|---|
@@ -190,7 +195,7 @@ GitHub Actions 会为每个平台构建桌面安装包：
 | macOS | DMG（`SeeGui-<version>-macos-<arch>.dmg`） |
 | Linux | AppImage（`SeeGui-<version>-linux-x86_64.AppImage`） |
 
-本机构建使用 `python3 packaging/build_installers.py --installer nsis|dmg|appimage`，详见 [packaging/README.md](packaging/README.md)。
+推送 `v*` tag 时 CI 自动构建并发布三个安装包。本机构建使用 `python3 packaging/build_installers.py --installer nsis|dmg|appimage`，详见 [packaging/README.md](packaging/README.md)。
 
 ## 本地降级
 
@@ -259,6 +264,7 @@ see/
     ├── see.sh
     ├── onboard.py
     ├── parse_media.py
+    ├── usage_log.py
     ├── gui.py
     ├── ocr_macos.js
     ├── ocr_macos.swift
@@ -267,11 +273,11 @@ see/
 
 ## License
 
-[MIT](./LICENSE) © 2026 oil-oil
+[MIT](./LICENSE) © 2026 tyza66
 
 ## 凭据与数据边界
 
-云端分析会把选定媒体发给所选供应商，可能计费；本地 OCR 不等于完整视觉理解。新密钥通过随附本机配置页存入系统凭据库，普通配置只保存引用。先用任务 Python 环境安装 `see/scripts/requirements-credentials.txt`（Skill 内相对路径为 `scripts/requirements-credentials.txt`）。不把 Key 发到聊天、命令参数或日志。旧明文配置不会自动迁移或覆盖：入口会先停止，提示备份后重新配置。状态检查只确认来源，API 验证成功才代表可用。全局指令写入仅在明确调用 `--install-agents` 时发生。
+云端分析会把选定媒体发给所选供应商，可能计费；本地 OCR 不等于完整视觉理解。新密钥通过随附本机配置页存入系统凭据库，普通配置只保存引用。先用任务 Python 环境安装 `see/scripts/requirements-credentials.txt`（Skill 内相对路径为 `scripts/requirements-credentials.txt`）。不把 Key 发到聊天、命令参数或日志；使用日志只记录事件、供应商、模型、计数和脱敏错误，不记录 Key 或媒体原文。旧明文配置不会自动迁移或覆盖：入口会先停止，提示备份后重新配置。状态检查只确认来源，API 验证成功才代表可用。全局指令写入仅在明确调用 `--install-agents` 或 SeeGui 安装时勾选后发生。
 
 ## API Key 配置页面
 

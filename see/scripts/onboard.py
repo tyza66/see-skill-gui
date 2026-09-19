@@ -5,6 +5,8 @@ import argparse
 import getpass
 import os
 import re
+import shlex
+import shutil
 import struct
 import subprocess
 import sys
@@ -12,6 +14,7 @@ import tempfile
 import zlib
 from pathlib import Path
 import secure_credentials
+import usage_log
 
 SEE_AGENTS_START = "<!-- see-skill:start -->"
 SEE_AGENTS_END = "<!-- see-skill:end -->"
@@ -74,7 +77,364 @@ def install_agents_rule(path: Path | None = None) -> tuple[Path, bool]:
     changed = updated != existing
     if changed:
         write_text_atomic(path, updated)
+        usage_log.append("agents_rule_installed", path=str(path))
     return path, changed
+
+
+def codex_home() -> Path:
+    return Path(os.getenv("CODEX_HOME", "") or Path.home() / ".codex").expanduser()
+
+
+def skill_dest_dir() -> Path:
+    return codex_home() / "skills" / "see"
+
+
+def bundled_skill_dir() -> Path:
+    meipass = getattr(sys, "_MEIPASS", "")
+    if meipass:
+        candidate = Path(meipass) / "see"
+        if (candidate / "SKILL.md").is_file():
+            return candidate
+    return Path(__file__).resolve().parent.parent
+
+
+def bundled_version() -> str:
+    value = os.getenv("SEE_GUI_VERSION", "").strip()
+    if value:
+        return value
+    marker = bundled_skill_dir() / ".see-gui-version"
+    if marker.is_file():
+        return marker.read_text(encoding="utf-8").strip() or "dev"
+    return "dev"
+
+
+def skill_install_status() -> dict[str, object]:
+    dest = skill_dest_dir()
+    installed = (dest / "SKILL.md").is_file()
+    version = ""
+    if installed:
+        marker = dest / ".see-gui-version"
+        version = (
+            marker.read_text(encoding="utf-8").strip()
+            if marker.is_file()
+            else "unknown"
+        )
+    return {
+        "installed": installed,
+        "path": str(dest),
+        "version": version,
+        "up_to_date": installed and version == bundled_version(),
+    }
+
+
+def install_skill() -> Path:
+    source = bundled_skill_dir()
+    if not (source / "SKILL.md").is_file():
+        raise RuntimeError(f"未找到可安装的 See Skill 资源：{source}")
+    dest = skill_dest_dir()
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        source,
+        dest,
+        ignore=shutil.ignore_patterns("__pycache__", ".git", "node_modules"),
+    )
+    (dest / ".see-gui-version").write_text(bundled_version(), encoding="utf-8")
+    for script in dest.glob("scripts/*.sh"):
+        script.chmod(0o755)
+    usage_log.append(
+        "skill_installed",
+        path=str(dest),
+        version=bundled_version(),
+    )
+    return dest
+
+
+def uninstall_skill() -> bool:
+    dest = skill_dest_dir()
+    if dest.exists():
+        shutil.rmtree(dest)
+        usage_log.append("skill_uninstalled", path=str(dest))
+        return True
+    return False
+
+
+def cli_bin_dir() -> Path:
+    if os.name == "nt":
+        return Path(os.getenv("APPDATA", str(Path.home() / "AppData" / "Roaming"))) / "see" / "bin"
+    return Path(os.getenv("XDG_BIN_HOME", str(Path.home() / ".local" / "bin"))).expanduser()
+
+
+def cli_launcher_path() -> Path:
+    return cli_bin_dir() / ("see.cmd" if os.name == "nt" else "see")
+
+
+def _shell_rc_paths() -> list[Path]:
+    home = Path.home()
+    return [home / ".zshrc", home / ".bashrc", home / ".profile"]
+
+
+def _rc_export_line() -> str:
+    return f'export PATH="{cli_bin_dir()}:$PATH"'
+
+
+def _cli_on_shell_rc() -> bool:
+    line = _rc_export_line()
+    return any(
+        path.is_file() and line in path.read_text(encoding="utf-8", errors="ignore")
+        for path in _shell_rc_paths()
+    )
+
+
+def _cli_on_windows_path() -> bool:
+    if os.name != "nt":
+        return False
+    try:
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "[Environment]::GetEnvironmentVariable('Path','User')",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return False
+    directory = str(cli_bin_dir()).lower()
+    return directory in result.stdout.lower()
+
+
+def cli_install_status() -> dict[str, object]:
+    launcher = cli_launcher_path()
+    installed = launcher.is_file()
+    on_path = (
+        str(cli_bin_dir()) in os.environ.get("PATH", "").split(os.pathsep)
+        or _cli_on_shell_rc()
+        or _cli_on_windows_path()
+    )
+    return {
+        "installed": installed,
+        "path": str(launcher),
+        "on_path": on_path,
+    }
+
+
+def _write_cli_launcher() -> Path:
+    launcher = cli_launcher_path()
+    launcher.parent.mkdir(parents=True, exist_ok=True)
+    skill = skill_dest_dir()
+    if not (skill / "SKILL.md").is_file():
+        raise RuntimeError("请先安装 See Skill，再安装全局 CLI")
+    script = str(skill / "scripts" / "parse_media.py")
+    if os.name == "nt":
+        content = "\r\n".join([
+            "@echo off",
+            f'set "SEE_SCRIPT={script}"',
+            "where python3 >nul 2>nul",
+            "if %errorlevel%==0 (",
+            '  python3 "%SEE_SCRIPT%" %*',
+            "  exit /b %errorlevel%",
+            ")",
+            "where python >nul 2>nul",
+            "if %errorlevel%==0 (",
+            '  python "%SEE_SCRIPT%" %*',
+            "  exit /b %errorlevel%",
+            ")",
+            "echo see requires Python 3 to be installed and on PATH.",
+            "exit /b 1",
+            "",
+        ])
+        launcher.write_text(content, encoding="utf-8", newline="")
+    else:
+        content = "\n".join([
+            "#!/bin/sh",
+            f'SCRIPT={shlex.quote(script)}',
+            'if command -v python3 >/dev/null 2>&1; then',
+            '  exec python3 "$SCRIPT" "$@"',
+            'fi',
+            'exec python "$SCRIPT" "$@"',
+            "",
+        ])
+        launcher.write_text(content, encoding="utf-8")
+        launcher.chmod(0o755)
+    return launcher
+
+
+def ensure_cli_on_path() -> list[str]:
+    messages: list[str] = []
+    directory = str(cli_bin_dir())
+    if os.name == "nt":
+        if not _cli_on_windows_path():
+            command = (
+                f"$user=[Environment]::GetEnvironmentVariable('Path','User');"
+                f"if ($user -notlike '*{directory}*') {{ "
+                f"[Environment]::SetEnvironmentVariable('Path',"
+                f"($user.TrimEnd(';') + ';{directory}'), 'User') }}"
+            )
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command", command],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            messages.append(f"已将 {directory} 加入用户 PATH")
+        return messages
+
+    if directory in os.environ.get("PATH", "").split(os.pathsep) or _cli_on_shell_rc():
+        return messages
+    line = _rc_export_line()
+    for rc in _shell_rc_paths():
+        if rc.exists():
+            content = rc.read_text(encoding="utf-8", errors="ignore")
+            if line not in content:
+                rc.write_text(content.rstrip() + "\n\n" + line + "\n", encoding="utf-8")
+            messages.append(f"已将 {directory} 加入 PATH（{rc}）")
+            return messages
+    profile = _shell_rc_paths()[-1]
+    profile.write_text(line + "\n", encoding="utf-8")
+    messages.append(f"已将 {directory} 加入 PATH（{profile}）")
+    return messages
+
+
+def install_cli() -> tuple[Path, list[str]]:
+    launcher = _write_cli_launcher()
+    path_messages = ensure_cli_on_path()
+    usage_log.append("cli_installed", path=str(launcher))
+    return launcher, path_messages
+
+
+def uninstall_cli() -> bool:
+    removed = False
+    launcher = cli_launcher_path()
+    if launcher.is_file():
+        launcher.unlink()
+        removed = True
+    if os.name == "nt":
+        directory = str(cli_bin_dir())
+        command = (
+            f"$user=[Environment]::GetEnvironmentVariable('Path','User');"
+            f"$parts=@($user -split ';');"
+            f"$parts=$parts | Where-Object {{ $_ -and $_.TrimEnd('\\') -ne '{directory}' }};"
+            f"[Environment]::SetEnvironmentVariable('Path',($parts -join ';'),'User')"
+        )
+        try:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-Command", command],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            pass
+        if removed:
+            usage_log.append("cli_uninstalled", path=str(launcher))
+        return removed
+    line = _rc_export_line()
+    for rc in _shell_rc_paths():
+        if rc.is_file():
+            content = rc.read_text(encoding="utf-8", errors="ignore")
+            if line in content:
+                rc.write_text(
+                    "\n".join(
+                        item for item in content.splitlines() if item != line
+                    ).rstrip()
+                    + "\n",
+                    encoding="utf-8",
+                )
+                removed = True
+    if removed:
+        usage_log.append("cli_uninstalled", path=str(launcher))
+    return removed
+
+
+def remove_agents_rule(path: Path | None = None) -> tuple[Path, bool]:
+    path = path or user_agents_path()
+    if not path.is_file():
+        return path, False
+    existing = path.read_text(encoding="utf-8")
+    updated = SEE_AGENTS_PATTERN.sub("", existing)
+    if updated == existing:
+        return path, False
+    lines = [line for line in updated.splitlines() if not line.strip()]
+    text_lines = [line for line in updated.splitlines() if line.strip()]
+    if not text_lines:
+        path.unlink()
+        return path, True
+    # Collapse blank padding while preserving the user's own text lines.
+    collapsed = "\n\n".join(section.strip() for section in re.split(r"\n\s*\n", updated.strip()))
+    write_text_atomic(path, collapsed + "\n")
+    usage_log.append("agents_rule_removed", path=str(path))
+    return path, True
+
+
+def configured_credential_references(
+    values: dict[str, str] | None = None,
+) -> list[str]:
+    values = values if values is not None else read_env_file(config_file_path())
+    refs = [
+        values[key].strip()
+        for key in sorted(values)
+        if key.startswith("SEE_CREDENTIAL_REF_") and values[key].strip()
+    ]
+    return list(dict.fromkeys(refs))
+
+
+def remove_credentials(
+    values: dict[str, str] | None = None,
+) -> tuple[list[str], list[str]]:
+    removed: list[str] = []
+    errors: list[str] = []
+    for reference in configured_credential_references(values):
+        try:
+            secure_credentials.delete(reference)
+            removed.append(reference)
+        except Exception as exc:
+            errors.append(f"{reference}: {safe_error(exc)}")
+    if removed:
+        usage_log.append("credentials_removed", refs=removed)
+    return removed, errors
+
+
+def remove_config() -> bool:
+    path = config_file_path()
+    if path.is_file():
+        path.unlink()
+        usage_log.append("config_removed", path=str(path))
+        return True
+    return False
+
+
+def uninstall_integration(
+    *,
+    skill: bool,
+    cli: bool,
+    agents: bool,
+    config: bool,
+    credentials: bool,
+    logs: bool,
+    agents_path: Path | None = None,
+) -> dict[str, object]:
+    summary: dict[str, object] = {}
+    if cli:
+        summary["cli"] = uninstall_cli()
+        summary["cli_path"] = str(cli_launcher_path())
+    if skill:
+        summary["skill"] = uninstall_skill()
+    if agents:
+        _, summary["agents_rule"] = remove_agents_rule(agents_path)
+    if config:
+        summary["config"] = remove_config()
+    if credentials:
+        removed, errors = remove_credentials()
+        summary["credentials_removed"] = removed
+        summary["credential_errors"] = errors
+    if logs:
+        summary["logs_cleared"] = usage_log.clear()
+    return summary
 
 
 def print_trigger_hint() -> None:
@@ -212,6 +572,11 @@ def write_config(values: dict[str, str]) -> Path:
             capture_output=True,
             text=True,
         )
+    usage_log.append(
+        "config_saved",
+        path=str(path),
+        provider=values.get("SEE_PROVIDER", ""),
+    )
     return path
 
 
